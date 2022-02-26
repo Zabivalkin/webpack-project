@@ -10,6 +10,8 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
 const isDev = process.env.NODE_ENV === 'development'
 const isProd = !isDev
 
+const pages = [{ name: 'main', path: './index' }]
+
 const optimization = () => {
   const config = {
     splitChunks: {
@@ -50,14 +52,21 @@ const babelOptions = (preset) => {
   return opts
 }
 
-const plugins = () => {
-  const base = [
+const pugPages = pages.map(
+  (page) =>
     new HTMLWebpackPlugin({
-      template: './index.html',
+      template: `${page.path}.pug`,
+      filename: `${page.path}.html`,
+      chunks: [page.name],
       minify: {
         collapseWhitespace: isProd,
       },
-    }),
+    })
+)
+
+const plugins = () => {
+  const base = [
+    ...pugPages,
     new CleanWebpackPlugin(),
     new CopyWebpackPlugin({
       patterns: [
@@ -77,9 +86,10 @@ const plugins = () => {
 module.exports = {
   context: path.resolve(__dirname, 'src'),
   mode: 'development',
-  entry: {
-    main: ['@babel/polyfill', './index.js'],
-  },
+  entry: pages.reduce((config, page) => {
+    config[page.name] = `${page.path}.js`
+    return config
+  }, {}),
   output: {
     filename: filename('js'),
     path: path.resolve(__dirname, 'dist'),
@@ -122,6 +132,11 @@ module.exports = {
       {
         test: /\.(ttf|woff|woff2|eot)$/,
         type: 'asset/resource',
+      },
+      {
+        test: /\.pug$/,
+        loader: 'pug3-loader',
+        exclude: /(node_modules)/,
       },
       {
         test: /\.m?js$/,
